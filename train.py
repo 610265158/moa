@@ -54,7 +54,7 @@ def main():
 
     n_fold=len(folds)
 
-    model_dicts=[{'name':'resnetlike','func':Complexer},
+    model_dicts=[#{'name':'resnetlike','func':Complexer},
                  {'name':'densenetlike','func':Denseplexer},
                  {'name':'tablenet','func':Tablenet},
                  ]
@@ -98,7 +98,7 @@ def main():
 
                 ### build model
 
-                model=model_dict['func']()
+                model=model_dict['func'](875+8)
 
                 model_name=str(model_dict['name']+str(cur_seed))
 
