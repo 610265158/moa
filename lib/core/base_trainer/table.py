@@ -858,7 +858,7 @@ class Attention(nn.Module):
 
 class Tableplexe(nn.Module):
 
-    def __init__(self, ):
+    def __init__(self, num_features):
         super(Tableplexe, self).__init__()
 
         self.n_d: int = 32
@@ -878,7 +878,7 @@ class Tableplexe(nn.Module):
         self.verbose: int = 1
 
         self.mask_type: str = "sparsemax"
-        self.input_dim: int = 875
+        self.input_dim: int = num_features
         self.output_dim: int = 512
         self.device_name: str = "auto"
         self.virtual_batch_size=32
@@ -914,7 +914,7 @@ class Tablenet(nn.Module):
 
 
 
-        self.dense1 =Tableplexe()
+        self.dense1 =Tableplexe(num_features)
 
 
 
