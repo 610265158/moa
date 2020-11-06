@@ -234,17 +234,25 @@ class AlaskaDataIter():
         if is_training:
             if random.uniform(0,1)<0.5:
                 data[3:]=self.jitter(data[3:])
-            if random.uniform(0,1)<0.5:
-                data[3:]=self.cutout(data[3:])
-
-            if np.sum(target)>0:
-                data[3:]=np.clip(data[3:],self.pos_min[3:],self.pos_max[3:])
-            else:
-                data[3:] = np.clip(data[3:], self.neg_min[3:], self.neg_max[3:])
-                
-        return data,target,extra_target
 
 
+        g_data=pd.Series(data[3:775])
+        c_data=pd.Series(data[775:875])
+        g_sum=g_data.sum()
+        g_mean=g_data.mean()
+        g_skwe=g_data.skew()
+        g_kurtosis=g_data.kurtosis()
+        c_sum=c_data.sum()
+        c_mean=c_data.mean()
+        c_skew=c_data.skew()
+        c_kurtosis=c_data.kurtosis()
+
+        FE1=np.array([g_sum,g_mean,g_skwe,g_kurtosis,c_sum,c_mean,c_skew,c_kurtosis])
+
+
+        feature=np.concatenate([data,FE1])
+
+        return feature,target,extra_target
 
     def jitter(self,x, rate=0.5):
 
@@ -252,7 +260,7 @@ class AlaskaDataIter():
 
         mask=mask>rate
 
-        jitter=np.random.uniform(-1,1,size=x.shape[0])*mask*2
+        jitter=np.random.uniform(-1,1,size=x.shape[0])*mask*1
 
         return x+jitter
     def cutout(self,x, rate=0.2):
