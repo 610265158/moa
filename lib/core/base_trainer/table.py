@@ -861,9 +861,9 @@ class Tableplexe(nn.Module):
     def __init__(self, num_features):
         super(Tableplexe, self).__init__()
 
-        self.n_d: int = 32
-        self.n_a: int = 32
-        self.n_steps: int = 1
+        self.n_d: int = 64
+        self.n_a: int = 64
+        self.n_steps: int = 2
         self.gamma: float = 1.3
         self.cat_idxs: []=[]
         self.cat_dims: []=[]
