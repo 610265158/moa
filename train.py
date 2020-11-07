@@ -1,6 +1,7 @@
 import torch
 from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 from sklearn.cluster import KMeans
+from sklearn.preprocessing import QuantileTransformer
 from torch import nn
 
 from lib.core.base_trainer.net_work import Train
@@ -25,6 +26,7 @@ from sklearn.feature_selection import VarianceThreshold
 from lib.core.base_trainer.model import Complexer
 from lib.core.base_trainer.densenet import Denseplexer
 from lib.core.base_trainer.table import Tablenet
+from lib.core.base_trainer.wide_and_depp import WideAndDeep
 
 def main():
 
@@ -39,11 +41,27 @@ def main():
 
     test_features = pd.read_csv('../lish-moa/test_features.csv')
 
-
+    pub_test_features=test_features.copy()
 
     ####
+    ####
+    GENES = [col for col in train_features.columns if col.startswith('g-')]
+    CELLS = [col for col in train_features.columns if col.startswith('c-')]
+    ####
+    # RankGauss - transform to Gauss
+    for col in (GENES + CELLS):
+        transformer = QuantileTransformer(n_quantiles=100, random_state=0, output_distribution="normal")
+        vec_len = len(train_features[col].values)
+        vec_len_pub_test = len(pub_test_features[col].values)
+        vec_len_test=len(test_features[col].values)
 
+        data = np.concatenate([train_features[col].values.reshape(vec_len, 1),
+                               pub_test_features[col].values.reshape(vec_len_pub_test, 1)], axis=0)
 
+        transformer.fit(data)
+
+        train_features[col] = \
+            transformer.transform(train_features[col].values.reshape(vec_len, 1)).reshape(1, vec_len)[0]
 
 
 

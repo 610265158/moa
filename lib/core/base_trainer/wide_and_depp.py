@@ -31,7 +31,10 @@ class Attention(nn.Module):
     def __init__(self, input_dim=512, output_dim=512):
         super(Attention, self).__init__()
 
-        self.att=nn.Sequential(nn.Linear(input_dim, output_dim, bias=False),
+        self.att=nn.Sequential(nn.Linear(input_dim, output_dim//4,bias=False),
+                               nn.BatchNorm1d(output_dim//4,momentum=BN_MOMENTUM,eps=BN_EPS),
+                               ACT_FUNCTION(),
+                               nn.Linear(output_dim//4, output_dim, bias=False),
                                nn.BatchNorm1d(output_dim, momentum=BN_MOMENTUM,eps=BN_EPS),
                                nn.Sigmoid())
 
@@ -39,6 +42,7 @@ class Attention(nn.Module):
         xx = self.att(x)
 
         return x*xx
+
 
 
 
@@ -71,27 +75,26 @@ class Deep(nn.Module):
         super(Deep, self).__init__()
 
         self.bn_init = nn.BatchNorm1d(num_features, momentum=0.01, eps=BN_EPS)
-        self.drop_1=nn.Dropout(0.3)
 
         self.dense1 =nn.Sequential(nn.Linear(num_features, hidden_size,bias=False),
                                    nn.BatchNorm1d(hidden_size,momentum=BN_MOMENTUM,eps=BN_EPS),
                                    ACT_FUNCTION(),
-                                   nn.Dropout(0.35),
+                                   nn.Dropout(0.5),
                                    )
 
         self.dense2 =nn.Sequential(ResBlock(hidden_size,hidden_size),
-                                   nn.Dropout(0.35),
+                                   nn.Dropout(0.5),
                                    ResBlock(hidden_size, hidden_size),
-                                   nn.Dropout(0.35),
+                                   nn.Dropout(0.5),
                                    ResBlock(hidden_size, hidden_size),
-                                   nn.Dropout(0.35),
+                                   nn.Dropout(0.5),
                                    )
 
         self.dense3 = nn.Linear(hidden_size, hidden_size)
 
     def forward(self, x):
         x = self.bn_init(x)
-        x = self.drop_1(x)
+
         x = self.dense1(x)
         x = self.dense2(x)
 
@@ -102,26 +105,25 @@ class Deep(nn.Module):
 class Wide(nn.Module):
 
     def __init__(self, num_features=875, num_targets=206,num_extra_targets=402, hidden_size=512):
-        super(Deep, self).__init__()
+        super(Wide, self).__init__()
 
         self.bn_init = nn.BatchNorm1d(num_features, momentum=0.01, eps=BN_EPS)
-        self.drop_1=nn.Dropout(0.3)
 
         self.dense1 =nn.Sequential(nn.Linear(num_features, hidden_size,bias=False),
                                    nn.BatchNorm1d(hidden_size,momentum=BN_MOMENTUM,eps=BN_EPS),
                                    ACT_FUNCTION(),
-                                   nn.Dropout(0.35),
-                                   nn.Linear(num_features, hidden_size, bias=False),
+                                   nn.Dropout(0.5),
+                                   nn.Linear(hidden_size, hidden_size, bias=False),
                                    nn.BatchNorm1d(hidden_size, momentum=BN_MOMENTUM, eps=BN_EPS),
                                    ACT_FUNCTION(),
-                                   nn.Dropout(0.35),
+                                   nn.Dropout(0.5),
                                    )
 
         self.dense3 = nn.Linear(hidden_size, hidden_size)
 
     def forward(self, x):
         x = self.bn_init(x)
-        x = self.drop_1(x)
+
         x = self.dense1(x)
         x = self.dense3(x)
 
@@ -133,28 +135,20 @@ class WideAndDeep(nn.Module):
         super(WideAndDeep, self).__init__()
 
 
-        self.wide=Wide(num_features=num_features,hidden_size=hidden_size)
+        self.wide=Wide(num_features=num_features,hidden_size=hidden_size*2)
         self.deep=Deep(num_features=num_features,hidden_size=hidden_size)
 
 
+        self.att=Attention(hidden_size*3,hidden_size*3)
 
-        self.att=Attention(hidden_size*2,hidden_size*2)
+        self.dense4 = nn.Linear(hidden_size * 3, num_targets)
 
-
-        # self.dense3 = nn.Sequential(nn.Linear(hidden_size*2, hidden_size*2),
-        #                             nn.BatchNorm1d(hidden_size*2),
-        #                             ACT_FUNCTION())
-
-        self.dense4 = nn.Linear(hidden_size * 2, num_targets)
-
-        self.dense5 = nn.Linear(hidden_size * 2, num_extra_targets)
+        self.dense5 = nn.Linear(hidden_size * 3, num_extra_targets)
     def forward(self, x):
         xx = self.wide(x)
         yy = self.deep(x)
 
         feature=torch.cat([xx,yy],dim=1)
-
-        # x = self.dense3(feature)
 
         xx = self.dense4(feature)
         yy = self.dense5(feature)

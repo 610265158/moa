@@ -207,7 +207,7 @@ class Train(object):
         output,output2 = self.model(feature)
         loss1=self.train_criterion(output,target1)
         loss2 = self.train_criterion(output2, target2)
-        loss=loss1+loss2
+        loss=loss1#+loss2
         summary_loss.update(loss.detach().item(), batch_size)
 
         self.optimizer.zero_grad()
