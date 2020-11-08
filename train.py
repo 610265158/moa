@@ -67,8 +67,8 @@ def main():
 
     print(train_features.shape)
     losscolector=[]
-    folds=[0,1,2,3,4,5,6,7,8,9]
-    seeds=[40,41,42,43,44,45,46,47,48,49,50]
+    folds=[0,1,2,3,4,5,6]
+    seeds=[40,41,42,43,44]
 
     n_fold=len(folds)
 
@@ -78,25 +78,26 @@ def main():
                  ]
 
 
-    #### 5 fols split
-    features = train_features.copy()
-    target_cols = [c for c in labels.columns if c not in ['sig_id']]
-    features['fold'] = -1
-    Fold = MultilabelStratifiedKFold(n_splits=n_fold, shuffle=True, random_state=10086)
-    for fold, (train_index, test_index) in enumerate(Fold.split(features, labels[target_cols])):
-        features['fold'][test_index] = fold
+
 
     for model_dict in model_dicts:
         # for cur_seed in seeds:
 
-        if 1:
+        for cur_seed in seeds:
+            seed_everything(cur_seed)
 
-            seed_choose_index=0
+            #### 5 fols split
+            features = train_features.copy()
+            target_cols = [c for c in labels.columns if c not in ['sig_id']]
+            features['fold'] = -1
+            Fold = MultilabelStratifiedKFold(n_splits=n_fold, shuffle=True, random_state=10086)
+            for fold, (train_index, test_index) in enumerate(Fold.split(features, labels[target_cols])):
+                features['fold'][test_index] = fold
+
+
             for fold in folds:
-                
-                cur_seed = seeds[seed_choose_index]
-                seed_choose_index+=1
-                seed_everything(cur_seed)
+
+
                 logger.info('train with seed %d' % (cur_seed))
 
                 ###build dataset
