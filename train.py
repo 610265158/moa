@@ -64,7 +64,6 @@ def main():
             transformer.transform(train_features[col].values.reshape(vec_len, 1)).reshape(1, vec_len)[0]
 
 
-
     print(train_features.shape)
     losscolector=[]
     folds=[0,1,2,3,4,5,6]
@@ -90,10 +89,9 @@ def main():
             features = train_features.copy()
             target_cols = [c for c in labels.columns if c not in ['sig_id']]
             features['fold'] = -1
-            Fold = MultilabelStratifiedKFold(n_splits=n_fold, shuffle=True, random_state=10086)
+            Fold = MultilabelStratifiedKFold(n_splits=n_fold, shuffle=True, random_state=cur_seed)
             for fold, (train_index, test_index) in enumerate(Fold.split(features, labels[target_cols])):
                 features['fold'][test_index] = fold
-
 
             for fold in folds:
 
@@ -122,10 +120,27 @@ def main():
                 model_name=str(model_dict['name']+str(cur_seed))
 
 
-                ###build trainer
-                trainer = Train(model_name=model_name,model=model,train_ds=train_ds,val_ds=val_ds,fold=fold)
-                ### train
-                loss,best_model=trainer.custom_loop()
+
+                if cfg.TRAIN.pretrain_on_no_score:
+                    ###build trainer
+                    trainer = Train(model_name='PRETRAIN_'+model_name, model=model, train_ds=train_ds, val_ds=val_ds, fold=fold)
+
+                    trainer.pretrain=True
+                    ### pretrian first with no score
+                    loss,best_model=trainer.custom_loop()
+
+                    ### train
+                    trainer_fine = Train(model_name=model_name, model=model, train_ds=train_ds, val_ds=val_ds, fold=fold)
+                    trainer_fine.load_from(best_model)
+                    trainer_fine.pretrain=False
+                    loss, best_model = trainer_fine.custom_loop()
+                else:
+                    ###build trainer
+                    trainer = Train(model_name=model_name, model=model, train_ds=train_ds, val_ds=val_ds, fold=fold)
+
+                    trainer.pretrain = False
+                    loss, best_model = trainer.custom_loop()
+
 
 
                 if cfg.TRAIN.finetune_alldata:
@@ -155,7 +170,7 @@ def main():
                     loss, best_model = trainer.custom_loop()
 
 
-                losscolector.append([loss,model])
+                losscolector.append([loss,best_model])
 
         avg_loss=0
         for k,loss_and_model in enumerate(losscolector):

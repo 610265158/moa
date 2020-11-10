@@ -54,7 +54,7 @@ config.TRAIN.SWA=-1    ### -1 use no swa   from which epoch start SWA
 
 
 config.TRAIN.finetune_alldata=False
-
+config.TRAIN.pretrain_on_no_score=True
 
 
 config.MODEL.label_smooth=0.05

@@ -158,7 +158,7 @@ class Train(object):
       self.train_criterion = BCEWithLogitsLoss(smooth_eps=0.001).to(self.device)
       self.criterion = nn.BCEWithLogitsLoss().to(self.device)
 
-
+      self.pretrain=True
 
   def custom_loop(self):
     """Custom training and testing loop.
@@ -205,9 +205,12 @@ class Train(object):
         batch_size = feature.shape[0]
 
         output,output2 = self.model(feature)
-        loss1=self.train_criterion(output,target1)
-        loss2 = self.train_criterion(output2, target2)
-        loss=loss1#+loss2
+
+        if self.pretrain:
+            loss = self.train_criterion(output2, target2)
+        else:
+            loss = self.train_criterion(output, target1)
+
         summary_loss.update(loss.detach().item(), batch_size)
 
         self.optimizer.zero_grad()
@@ -261,8 +264,15 @@ class Train(object):
                 target2 = torch.from_numpy(target2).to(self.device).float()
                 batch_size = feature.shape[0]
 
-                output,_ = self.model(feature)
-                loss = self.criterion(output, target1)
+                output, output2 = self.model(feature)
+                loss1 = self.criterion(output, target1)
+                loss2 = self.criterion(output2, target2)
+
+                if self.pretrain:
+                    loss = loss2
+                else:
+                    loss = loss1
+
                 summary_loss.update(loss.detach().item(), batch_size)
 
                 if step % cfg.TRAIN.log_interval == 0:
@@ -372,3 +382,7 @@ class Train(object):
 
 
 
+
+  def load_from(self,model_name):
+      state_dict = torch.load(model_name, map_location=self.device)
+      self.model.load_state_dict(state_dict, strict=False)
