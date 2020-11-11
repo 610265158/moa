@@ -71,6 +71,9 @@ class Complexer(nn.Module):
         super(Complexer, self).__init__()
 
         self.bn_init = nn.BatchNorm1d(num_features, momentum=0.01, eps=BN_EPS)
+
+        self.drop_1=nn.Dropout(0.2)
+
         self.dense1 =nn.Sequential(nn.Linear(num_features, hidden_size,bias=False),
                                    nn.BatchNorm1d(hidden_size,momentum=BN_MOMENTUM,eps=BN_EPS),
                                    ACT_FUNCTION(),
@@ -89,21 +92,21 @@ class Complexer(nn.Module):
 
         self.max_p = nn.MaxPool1d(kernel_size=3,stride=1,padding=1)
         self.mean_p = nn.AvgPool1d(kernel_size=3, stride=1, padding=1)
-        self.att=Attention(hidden_size,hidden_size)
+        self.att = Attention(3*hidden_size,3*hidden_size)
 
-
-        self.dense3 = nn.Linear(hidden_size, hidden_size)
 
         self.dense4 = nn.Linear(hidden_size*3, num_targets)
 
         self.dense5 = nn.Linear(hidden_size * 3, num_extra_targets)
     def forward(self, x):
         x = self.bn_init(x)
+
+        x = self.drop_1(x)
         x = self.dense1(x)
         x = self.dense2(x)
 
-        x = self.att(x)
-        x = self.dense3(x)
+
+
 
 
         x=x.unsqueeze(dim=1)
@@ -112,7 +115,7 @@ class Complexer(nn.Module):
         x=torch.cat([yy,zz,x],dim=2)
         x=x.squeeze(1)
 
-
+        x = self.att(x)
         xx = self.dense4(x)
         yy = self.dense5(x)
         return xx,yy

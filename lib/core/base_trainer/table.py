@@ -92,7 +92,7 @@ class TabNetNoEmbeddings(torch.nn.Module):
         self.n_shared = n_shared
         self.virtual_batch_size = virtual_batch_size
         self.mask_type = mask_type
-        self.initial_bn = BatchNorm1d(self.input_dim, momentum=0.01)
+        #self.initial_bn = BatchNorm1d(self.input_dim, momentum=0.01)
 
         if self.n_shared > 0:
             shared_feat_transform = torch.nn.ModuleList()
@@ -139,7 +139,7 @@ class TabNetNoEmbeddings(torch.nn.Module):
 
     def forward(self, x):
         res = 0
-        x = self.initial_bn(x)
+        #x = self.initial_bn(x)
 
         prior = torch.ones(x.shape).to(x.device)
         M_loss = 0
@@ -912,8 +912,9 @@ class Tablenet(nn.Module):
     def __init__(self, num_features=875, num_targets=206,num_extra_targets=402, hidden_size=512):
         super(Tablenet, self).__init__()
 
+        self.bn_init = nn.BatchNorm1d(num_features, momentum=0.01, eps=BN_EPS)
 
-
+        self.drop_1 = nn.Dropout(0.2)
         self.dense1 =Tableplexe(num_features)
 
 
@@ -921,9 +922,8 @@ class Tablenet(nn.Module):
 
         self.max_p = nn.MaxPool1d(kernel_size=3,stride=1,padding=1)
         self.mean_p = nn.AvgPool1d(kernel_size=3, stride=1, padding=1)
-        self.att=Attention(hidden_size,hidden_size)
 
-
+        self.att = Attention(3 * hidden_size, 3 * hidden_size)
         self.dense3 = nn.Linear(hidden_size, hidden_size)
 
         self.dense4 = nn.Linear(hidden_size*3, num_targets)
@@ -931,10 +931,10 @@ class Tablenet(nn.Module):
         self.dense5 = nn.Linear(hidden_size * 3, num_extra_targets)
     def forward(self, x):
 
-        x,loss = self.dense1(x)
 
-        x = self.att(x)
-        x = self.dense3(x)
+        x=self.bn_init(x)
+        x=self.drop_1(x)
+        x,loss = self.dense1(x)
 
 
         x=x.unsqueeze(dim=1)
@@ -943,7 +943,7 @@ class Tablenet(nn.Module):
         x=torch.cat([yy,zz,x],dim=2)
         x=x.squeeze(1)
 
-
+        x = self.att(x)
         xx = self.dense4(x)
         yy = self.dense5(x)
         return xx,yy
