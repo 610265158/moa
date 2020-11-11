@@ -43,25 +43,25 @@ def main():
 
     pub_test_features=test_features.copy()
 
-    ####
-    ####
-    GENES = [col for col in train_features.columns if col.startswith('g-')]
-    CELLS = [col for col in train_features.columns if col.startswith('c-')]
-    ####
-    # RankGauss - transform to Gauss
-    for col in (GENES + CELLS):
-        transformer = QuantileTransformer(n_quantiles=100, random_state=0, output_distribution="normal")
-        vec_len = len(train_features[col].values)
-        vec_len_pub_test = len(pub_test_features[col].values)
-        vec_len_test=len(test_features[col].values)
-
-        data = np.concatenate([train_features[col].values.reshape(vec_len, 1),
-                               pub_test_features[col].values.reshape(vec_len_pub_test, 1)], axis=0)
-
-        transformer.fit(data)
-
-        train_features[col] = \
-            transformer.transform(train_features[col].values.reshape(vec_len, 1)).reshape(1, vec_len)[0]
+    # ####
+    # ####
+    # GENES = [col for col in train_features.columns if col.startswith('g-')]
+    # CELLS = [col for col in train_features.columns if col.startswith('c-')]
+    # ####
+    # # RankGauss - transform to Gauss
+    # for col in (GENES + CELLS):
+    #     transformer = QuantileTransformer(n_quantiles=100, random_state=0, output_distribution="normal")
+    #     vec_len = len(train_features[col].values)
+    #     vec_len_pub_test = len(pub_test_features[col].values)
+    #     vec_len_test=len(test_features[col].values)
+    #
+    #     data = np.concatenate([train_features[col].values.reshape(vec_len, 1),
+    #                            pub_test_features[col].values.reshape(vec_len_pub_test, 1)], axis=0)
+    #
+    #     transformer.fit(data)
+    #
+    #     train_features[col] = \
+    #         transformer.transform(train_features[col].values.reshape(vec_len, 1)).reshape(1, vec_len)[0]
 
 
     print(train_features.shape)
