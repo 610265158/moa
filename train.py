@@ -43,86 +43,89 @@ def main():
 
     pub_test_features=test_features.copy()
 
-    ####
-    ####
-    GENES = [col for col in train_features.columns if col.startswith('g-')]
-    CELLS = [col for col in train_features.columns if col.startswith('c-')]
-    ####
-    # RankGauss - transform to Gauss
-    for col in (GENES + CELLS):
-        transformer = QuantileTransformer(n_quantiles=100, random_state=0, output_distribution="normal")
-        vec_len = len(train_features[col].values)
-        vec_len_pub_test = len(pub_test_features[col].values)
-        vec_len_test=len(test_features[col].values)
-
-        data = np.concatenate([train_features[col].values.reshape(vec_len, 1),
-                               pub_test_features[col].values.reshape(vec_len_pub_test, 1)], axis=0)
-
-        transformer.fit(data)
-
-        train_features[col] = \
-            transformer.transform(train_features[col].values.reshape(vec_len, 1)).reshape(1, vec_len)[0]
-
-        pub_test_features[col] = \
-            transformer.transform(pub_test_features[col].values.reshape(vec_len_pub_test, 1)).reshape(1, vec_len_pub_test)[
-                0]
-
-    def get_selected_index(train_features,test_features,thres=0.8,selected_index=None):
 
 
-        ###PCA
+    if cfg.DATA.FE:
+        ####
+        ####
+        GENES = [col for col in train_features.columns if col.startswith('g-')]
+        CELLS = [col for col in train_features.columns if col.startswith('c-')]
+        ####
+        # RankGauss - transform to Gauss
+        for col in (GENES + CELLS):
+            transformer = QuantileTransformer(n_quantiles=100, random_state=0, output_distribution="normal")
+            vec_len = len(train_features[col].values)
+            vec_len_pub_test = len(pub_test_features[col].values)
+            vec_len_test=len(test_features[col].values)
 
-        # GENES
-        n_comp_GENES=872//2
-        data = pd.concat([pd.DataFrame(train_features[GENES]), pd.DataFrame(test_features[GENES])])
-        data2 = (PCA(n_components=n_comp_GENES, random_state=42).fit_transform(data[GENES]))
-        train2 = data2[:train_features.shape[0]];
-        test2 = data2[-test_features.shape[0]:]
+            data = np.concatenate([train_features[col].values.reshape(vec_len, 1),
+                                   pub_test_features[col].values.reshape(vec_len_pub_test, 1)], axis=0)
 
-        train2 = pd.DataFrame(train2, columns=[f'pca_G-{i}' for i in range(n_comp_GENES)])
-        test2 = pd.DataFrame(test2, columns=[f'pca_G-{i}' for i in range(n_comp_GENES)])
+            transformer.fit(data)
 
-        train_features = pd.concat((train_features, train2), axis=1)
-        test_features = pd.concat((test_features, test2), axis=1)
+            train_features[col] = \
+                transformer.transform(train_features[col].values.reshape(vec_len, 1)).reshape(1, vec_len)[0]
 
-        # CELLS
-        n_comp_CELLS=100//2
-        data = pd.concat([pd.DataFrame(train_features[CELLS]), pd.DataFrame(test_features[CELLS])])
-        data2 = (PCA(n_components=n_comp_CELLS, random_state=42).fit_transform(data[CELLS]))
-        train2 = data2[:train_features.shape[0]];
-        test2 = data2[-test_features.shape[0]:]
+            pub_test_features[col] = \
+                transformer.transform(pub_test_features[col].values.reshape(vec_len_pub_test, 1)).reshape(1, vec_len_pub_test)[
+                    0]
 
-        train2 = pd.DataFrame(train2, columns=[f'pca_C-{i}' for i in range(n_comp_CELLS)])
-        test2 = pd.DataFrame(test2, columns=[f'pca_C-{i}' for i in range(n_comp_CELLS)])
-
-        train_features = pd.concat((train_features, train2), axis=1)
-        test_features = pd.concat((test_features, test2), axis=1)
-
-
-        if selected_index is None:
-            ###get the selected feature
-
-            var_thresh = VarianceThreshold(thres)
-
-            data = train_features.append(test_features)
-            data_transformed = var_thresh.fit(data.iloc[:, 4:])
-            selected_index = var_thresh._get_support_mask().tolist()
-
-            selected_index=[True,True,True,True]+selected_index
+        def get_selected_index(train_features,test_features,thres=0.8,selected_index=None):
 
 
-            return train_features.columns.values[selected_index]
-        else:
-            ### get the feature
+            ###PCA
 
-            return train_features[selected_index],test_features[selected_index]
+            # GENES
+            n_comp_GENES=872//2
+            data = pd.concat([pd.DataFrame(train_features[GENES]), pd.DataFrame(test_features[GENES])])
+            data2 = (PCA(n_components=n_comp_GENES, random_state=42).fit_transform(data[GENES]))
+            train2 = data2[:train_features.shape[0]];
+            test2 = data2[-test_features.shape[0]:]
+
+            train2 = pd.DataFrame(train2, columns=[f'pca_G-{i}' for i in range(n_comp_GENES)])
+            test2 = pd.DataFrame(test2, columns=[f'pca_G-{i}' for i in range(n_comp_GENES)])
+
+            train_features = pd.concat((train_features, train2), axis=1)
+            test_features = pd.concat((test_features, test2), axis=1)
+
+            # CELLS
+            n_comp_CELLS=100//2
+            data = pd.concat([pd.DataFrame(train_features[CELLS]), pd.DataFrame(test_features[CELLS])])
+            data2 = (PCA(n_components=n_comp_CELLS, random_state=42).fit_transform(data[CELLS]))
+            train2 = data2[:train_features.shape[0]];
+            test2 = data2[-test_features.shape[0]:]
+
+            train2 = pd.DataFrame(train2, columns=[f'pca_C-{i}' for i in range(n_comp_CELLS)])
+            test2 = pd.DataFrame(test2, columns=[f'pca_C-{i}' for i in range(n_comp_CELLS)])
+
+            train_features = pd.concat((train_features, train2), axis=1)
+            test_features = pd.concat((test_features, test2), axis=1)
 
 
-    selected_deature_names=get_selected_index(train_features,pub_test_features,thres=0.8)
+            if selected_index is None:
+                ###get the selected feature
+
+                var_thresh = VarianceThreshold(thres)
+
+                data = train_features.append(test_features)
+                data_transformed = var_thresh.fit(data.iloc[:, 4:])
+                selected_index = var_thresh._get_support_mask().tolist()
+
+                selected_index=[True,True,True,True]+selected_index
 
 
-    train_features,test_features=get_selected_index(train_features,pub_test_features,0.8,selected_deature_names)
-    print(selected_deature_names)
+                return train_features.columns.values[selected_index]
+            else:
+                ### get the feature
+
+                return train_features[selected_index],test_features[selected_index]
+
+
+        selected_deature_names=get_selected_index(train_features,pub_test_features,thres=0.8)
+
+
+        train_features,test_features=get_selected_index(train_features,pub_test_features,0.8,selected_deature_names)
+        print(selected_deature_names)
     print(train_features.shape)
 
     num_features=train_features.shape[1]-1   #### - sigid

@@ -45,7 +45,7 @@ config.MODEL.pre_length=68         ##68:107, 91:130
 config.DATA = edict()
 
 config.DATA.filter_ctl_vehicle=False
-
+config.DATA.FE=True
 
 ####mainly hyper params
 config.TRAIN.warmup_step=1500
