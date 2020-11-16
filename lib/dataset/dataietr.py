@@ -1,4 +1,3 @@
-
 import pandas as pd
 import random
 import cv2
@@ -9,33 +8,33 @@ import matplotlib.pyplot as plt
 from lib.helper.logger import logger
 from tensorpack.dataflow import DataFromGenerator, BatchData, MultiProcessPrefetchData, PrefetchDataZMQ, RepeatedData
 import time
+from tqdm import tqdm
 
+from lib.dataset.augmentor.augmentation import Rotate_aug, \
+    Affine_aug, \
+    Mirror, \
+    Padding_aug, \
+    Img_dropout
 
-from lib.dataset.augmentor.augmentation import Rotate_aug,\
-                                                Affine_aug,\
-                                                Mirror,\
-                                                Padding_aug,\
-                                                Img_dropout
-
-
-
-from lib.dataset.augmentor.visual_augmentation import ColorDistort,pixel_jitter
+from lib.dataset.augmentor.visual_augmentation import ColorDistort, pixel_jitter
 
 from train_config import config as cfg
 import albumentations as A
 import os
 
+
 class data_info(object):
-    def __init__(self,img_root,ann_file,training=True):
-        self.ann_file=ann_file
+    def __init__(self, img_root, ann_file, training=True):
+        self.ann_file = ann_file
         self.root_path = img_root
-        self.metas=[]
-        self.training=training
+        self.metas = []
+        self.training = training
 
         self.load_anns()
-    def one_hot(self,p,length):
-        label=np.zeros(shape=length)
-        label[p]=1
+
+    def one_hot(self, p, length):
+        label = np.zeros(shape=length)
+        label[p] = 1
         return label
 
     def load_anns(self):
@@ -47,48 +46,43 @@ class data_info(object):
             fname = cur_data_info[0]
             label = cur_data_info[1]
 
-
-
-
-            image_path= os.path.join(self.root_path,fname)
+            image_path = os.path.join(self.root_path, fname)
             self.metas.append([image_path, label])
 
             ###some change can be made here
 
-        logger.info('the datasets contains %d samples'%(len(image_label_list)))
+        logger.info('the datasets contains %d samples' % (len(image_label_list)))
         logger.info('the datasets contains %d samples after filter' % (len(self.metas)))
 
     def get_all_sample(self):
         random.shuffle(self.metas)
         return self.metas
+
+
 #
 #
 class DataIter():
-    def __init__(self,feature,target,extra_target,training_flag=True,shuffle=True):
+    def __init__(self, feature, target, extra_target, training_flag=True, shuffle=True):
 
-        self.shuffle=shuffle
-        self.training_flag=training_flag
+        self.shuffle = shuffle
+        self.training_flag = training_flag
         self.num_gpu = cfg.TRAIN.num_gpu
         self.batch_size = cfg.TRAIN.batch_size
         self.process_num = cfg.TRAIN.process_num
         self.prefetch_size = cfg.TRAIN.prefetch_size
 
-
-
-        self.generator = AlaskaDataIter(feature,target,extra_target, self.training_flag,self.shuffle)
+        self.generator = AlaskaDataIter(feature, target, extra_target, self.training_flag, self.shuffle)
         if not training_flag:
-            self.process_num=1
-            self.batch_size=len(self.generator)
+            self.process_num = 1
+            self.batch_size = len(self.generator)
 
-        self.ds=self.build_iter()
+        self.ds = self.build_iter()
 
         self.size = self.__len__()
 
-
-    def parse_file(self,im_root_path,ann_file):
+    def parse_file(self, im_root_path, ann_file):
 
         raise NotImplementedError("you need implemented the parse func for your data")
-
 
     def build_iter(self):
 
@@ -103,56 +97,47 @@ class DataIter():
 
     def __call__(self, *args, **kwargs):
 
+        one_batch = next(self.ds)
 
-        one_batch=next(self.ds)
+        image, label1, label2 = one_batch[0], one_batch[1], one_batch[2]
 
-        image,label1,label2=one_batch[0],one_batch[1],one_batch[2]
-
-        return image,label1,label2
-
-
+        return image, label1, label2
 
     def __len__(self):
         if not self.training_flag:
             return 1
         else:
-            return len(self.generator)//self.batch_size
+            return len(self.generator) // self.batch_size
 
-    def _map_func(self,dp,is_training):
+    def _map_func(self, dp, is_training):
 
         raise NotImplementedError("you need implemented the map func for your data")
 
 
-
-
 class AlaskaDataIter():
-    def __init__(self,feature,target,extra_target, training_flag=True,shuffle=True):
-
-
+    def __init__(self, feature, target, extra_target, training_flag=True, shuffle=True):
 
         ###prevent modify
-        feature=feature.copy()
+        feature = feature.copy()
 
         self.training_flag = training_flag
         self.shuffle = shuffle
 
-        data,target,extra_target=self.parse_file(feature,target,extra_target)
+        data, target, extra_target = self.parse_file(feature, target, extra_target)
 
-
-
-
-        self.data=data
-        self.label=target
-        self.extra_label=extra_target
+        self.data = data
+        self.label = target
+        self.extra_label = extra_target
         self.raw_data_set_size = self.data.shape[0]  ##decided by self.parse_file
 
+        self.get_the_thres(self.data, target)
 
+        self.label_types, self.label_type_map = self.get_label_type(self.data, self.label)
 
-        self.get_the_thres(self.data,target)
+        self.index = np.arange(0, self.data.shape[0])
 
     def __call__(self, *args, **kwargs):
         idxs = np.arange(self.data.shape[0])
-
 
         while 1:
             if self.shuffle:
@@ -160,16 +145,46 @@ class AlaskaDataIter():
             for k in idxs:
                 yield self.single_map_func(k, self.training_flag)
 
-
     def __len__(self):
         assert self.raw_data_set_size is not None
 
         return self.raw_data_set_size
 
+    def get_label_type(self, x, y):
 
+        def make_str(array):
+            res = ''
 
+            for i in range(array.shape[0]):
+                res += str(array[i])
 
-    def get_the_thres(self,feature,target):
+            return res
+
+        type_id = 0
+
+        type_label_dict = {}
+        num_sample = x.shape[0]
+        print(y.shape)
+        for j in range(y.shape[0]):
+
+            label_str = make_str(y[j, ...])
+            if label_str in type_label_dict:
+                pass
+            else:
+                type_label_dict[label_str] = type_id
+                type_id += 1
+
+        types = []
+        for j in range(y.shape[0]):
+            label_str = make_str(y[j, ...])
+            types.append(type_label_dict[label_str])
+
+        print(types)
+        print('traindata contain%d kinds  of targes' % len(types))
+
+        return np.array(types), type_label_dict
+
+    def get_the_thres(self, feature, target):
 
         take = np.sum(target, axis=1)
 
@@ -185,10 +200,7 @@ class AlaskaDataIter():
         self.neg_max = np.max(data, axis=0)
         self.neg_min = np.min(data, axis=0)
 
-    def parse_file(self,feature,target,extra_target):
-
-
-
+    def parse_file(self, feature, target, extra_target):
 
         train_features = feature
         labels_train = target
@@ -203,7 +215,7 @@ class AlaskaDataIter():
 
             return df
 
-        train_features=preprocess(train_features)
+        train_features = preprocess(train_features)
 
         ####filter control
         if cfg.DATA.filter_ctl_vehicle:
@@ -212,15 +224,14 @@ class AlaskaDataIter():
             labels_train = labels_train[filter_index]
             extra_labels_train = extra_labels_train[filter_index]
 
-        train_features = train_features.drop(['sig_id', 'fold' ], axis=1).values
+        train_features = train_features.drop(['sig_id', 'fold'], axis=1).values
 
         labels_train = labels_train.drop('sig_id', axis=1).values
         extra_labels_train = extra_labels_train.drop('sig_id', axis=1).values
 
+        logger.info('dataset contains %d samples' % (train_features.shape[0]))
 
-        logger.info('dataset contains %d samples'%(train_features.shape[0]))
-
-        return train_features,labels_train,extra_labels_train
+        return train_features, labels_train, extra_labels_train
 
     def single_map_func(self, index, is_training):
         """Data augmentation function."""
@@ -230,37 +241,69 @@ class AlaskaDataIter():
         target = self.label[index]
         extra_target = self.extra_label[index]
 
-
         if is_training:
-            if random.uniform(0,1)<0.5:
-                data[3:]=self.jitter(data[3:])
-            if random.uniform(0,1)<0.5:
-                data[3:]=self.cutout(data[3:])
+            if random.uniform(0, 1) < 0.5:
+                data[3:] = self.jitter(data[3:])
+            if random.uniform(0, 1) < 0.5:
+                data[3:] = self.cutout(data[3:])
+            if random.uniform(0, 1) < 0.5:
+                data[3:] = self.cutmix(data[3:], target)
 
-            if np.sum(target)>0:
-                data[3:]=np.clip(data[3:],self.pos_min[3:],self.pos_max[3:])
+            if np.sum(target) > 0:
+                data[3:] = np.clip(data[3:], self.pos_min[3:], self.pos_max[3:])
             else:
                 data[3:] = np.clip(data[3:], self.neg_min[3:], self.neg_max[3:])
-                
-        return data,target,extra_target
+
+        return data, target, extra_target
+
+    def jitter(self, x, rate=0.5):
+
+        mask = np.random.uniform(0, 1, size=x.shape[0])
+
+        mask = mask > rate
+
+        jitter = np.random.uniform(-1, 1, size=x.shape[0]) * mask * 1
+
+        return x + jitter
+
+    def cutout(self, x, rate=0.2):
+
+        mask = np.random.uniform(0, 1, size=x.shape[0])
+
+        mask = mask > rate
+
+        return x * mask
+
+    def cutmix(self, x, y, rate=0.5):
+        def make_str(array):
+            res = ''
+            for i in range(array.shape[0]):
+                res += str(array[i])
+
+            return res
+
+        label_str = make_str(y)
+        type = self.label_type_map[label_str]
+
+        match_index = self.index[self.label_types == type]
+
+        choose_index = np.random.choice(match_index, 1)[0]
+        print(choose_index)
+        mixed_data = self.data[choose_index, 3:]
+
+        ###make the mask
+
+        length = random.randint(50, 400)
+        start = random.randint(0, 872 - length)
+
+        x[start:start + length] = mixed_data[start:start + length]
+
+        return x
 
 
 
-    def jitter(self,x, rate=0.5):
 
-        mask=np.random.uniform(0,1,size=x.shape[0])
 
-        mask=mask>rate
 
-        jitter=np.random.uniform(-1,1,size=x.shape[0])*mask*1
-
-        return x+jitter
-    def cutout(self,x, rate=0.2):
-
-        mask=np.random.uniform(0,1,size=x.shape[0])
-
-        mask=mask>rate
-
-        return x*mask
 
 
