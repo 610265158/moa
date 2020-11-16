@@ -82,7 +82,7 @@ def main():
     for model_dict in model_dicts:
         # for cur_seed in seeds:
         if model_dict['name']=='tablenet':
-            cfg.TRAIN.init_lr = 1.e-3
+            cfg.TRAIN.init_lr = 5.e-3
         for cur_seed in seeds:
             seed_everything(cur_seed)
 
