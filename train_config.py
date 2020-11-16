@@ -9,7 +9,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 config.TRAIN = edict()
 #### below are params for dataiter
-config.TRAIN.process_num = 1
+config.TRAIN.process_num = 3
 config.TRAIN.prefetch_size = 15
 ############
 

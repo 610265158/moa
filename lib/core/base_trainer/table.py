@@ -881,7 +881,7 @@ class Tableplexe(nn.Module):
         self.input_dim: int = num_features
         self.output_dim: int = 512
         self.device_name: str = "auto"
-        self.virtual_batch_size=32
+        self.virtual_batch_size=128
 
         self.network = TabNet(
                     self.input_dim,
