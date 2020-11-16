@@ -67,7 +67,7 @@ def main():
     print(train_features.shape)
     losscolector=[]
     folds=[0,1,2,3,4,5,6]
-    seeds=[40,41,42,43,44]
+    seeds=[40,42,10086]
 
     n_fold=len(folds)
 
@@ -81,7 +81,8 @@ def main():
 
     for model_dict in model_dicts:
         # for cur_seed in seeds:
-
+        if model_dict['name']=='tablenet':
+            cfg.TRAIN.init_lr = 1.e-3
         for cur_seed in seeds:
             seed_everything(cur_seed)
 
