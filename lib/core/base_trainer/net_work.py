@@ -207,9 +207,9 @@ class Train(object):
         output,output2 = self.model(feature)
 
         if self.pretrain:
-            loss = self.train_criterion(output2, target2)
+            loss = self.train_criterion(output2, target2)+self.train_criterion(output, target1)
         else:
-            loss = self.train_criterion(output, target1)
+            loss =self.train_criterion(output2, target2)+self.train_criterion(output, target1)
 
         summary_loss.update(loss.detach().item(), batch_size)
 
@@ -266,10 +266,10 @@ class Train(object):
 
                 output, output2 = self.model(feature)
                 loss1 = self.criterion(output, target1)
-                loss2 = self.criterion(output2, target2)
+                # loss2 = self.criterion(output2, target2)
 
                 if self.pretrain:
-                    loss = loss2
+                    loss = loss1
                 else:
                     loss = loss1
 

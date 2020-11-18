@@ -254,6 +254,21 @@ class AlaskaDataIter():
             else:
                 data[3:] = np.clip(data[3:], self.neg_min[3:], self.neg_max[3:])
 
+
+
+
+            # #
+            # if random.uniform(0, 1) < 0.3:
+            #
+            #     rand_data=np.random.randint(0,4,size=872)
+            #
+            #     data=np.concatenate([data[0:3],rand_data])
+            #
+            #     if random.uniform(0, 1) < 0.5:
+            #         data[3:] = self.jitter(data[3:])
+            #
+            #     target=np.zeros(206)
+            #     extra_target=np.zeros(402)
         return data, target, extra_target
 
     def jitter(self, x, rate=0.5):
@@ -262,7 +277,7 @@ class AlaskaDataIter():
 
         mask = mask > rate
 
-        jitter = np.random.uniform(-1, 1, size=x.shape[0]) * mask * 1
+        jitter = np.random.uniform(-1, 1, size=x.shape[0]) * mask * 1.5
 
         return x + jitter
 
@@ -288,7 +303,7 @@ class AlaskaDataIter():
         match_index = self.index[self.label_types == type]
 
         choose_index = np.random.choice(match_index, 1)[0]
-        print(choose_index)
+        #print(choose_index)
         mixed_data = self.data[choose_index, 3:]
 
         ###make the mask
