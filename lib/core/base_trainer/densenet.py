@@ -97,6 +97,20 @@ class Denseplexer(nn.Module):
         self.dense4 = nn.Linear(hidden_size*3, num_targets)
 
         self.dense5 = nn.Linear(hidden_size * 3, num_extra_targets)
+
+        #####get the bias
+
+        import pandas as pd
+        import numpy as np
+        from torch.nn import Parameter
+        y_develop = pd.read_csv('../lish-moa/train_targets_scored.csv')
+        y_develop = y_develop.drop('sig_id', axis=1).values
+        y_develop = -np.log(y_develop.mean(axis=0)).astype(np.float32)
+
+        bias = torch.from_numpy(y_develop)
+
+        self.dense4.bias = Parameter(bias)
+
     def forward(self, x):
 
 
