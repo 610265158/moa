@@ -66,7 +66,7 @@ class Train(object):
     if 'Adamw' in cfg.TRAIN.opt:
 
       self.optimizer = torch.optim.AdamW(self.model.parameters(),
-                                         lr=self.init_lr,eps=1.e-5,weight_decay=cfg.TRAIN.weight_decay_factor)
+                                         lr=self.init_lr,eps=1.e-12,weight_decay=cfg.TRAIN.weight_decay_factor)
     else:
       self.optimizer = torch.optim.SGD(self.model.parameters(),
                                        lr=self.init_lr,
@@ -92,7 +92,7 @@ class Train(object):
 
     self.val_ds = val_ds
 
-    self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', patience=5,factor=0.5,min_lr=1e-6,verbose=True)
+    self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min', patience=5,factor=0.1,min_lr=1e-6,verbose=True)
     # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR( self.optimizer, self.epochs,eta_min=1.e-6)
 
 
@@ -185,7 +185,7 @@ class Train(object):
                       m.bias.requires_grad = False
       for step in range(self.train_ds.size):
 
-        if epoch_num<10:
+        if epoch_num<20:
             ###excute warm up in the first epoch
             if self.warup_step>0:
                 if self.iter_num < self.warup_step:

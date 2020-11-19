@@ -67,13 +67,13 @@ def main():
     print(train_features.shape)
     losscolector=[]
     folds=[0,1,2,3,4,5,6]
-    seeds=[42,10086]
+    seeds=[40,42,10086]
 
     n_fold=len(folds)
 
-    model_dicts=[{'name':'resnetlike','func':Complexer},
-                 {'name':'densenetlike','func':Denseplexer},
-                 {'name':'tablenet','func':Tablenet},
+    model_dicts=[{'name': 'resnetlike','func':Complexer},
+                 {'name': 'densenetlike','func':Denseplexer},
+                 {'name': 'tablenet','func':Tablenet},
                  {'name': 'hourglass', 'func': Hourglass},
                  ]
 

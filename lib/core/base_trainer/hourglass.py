@@ -79,26 +79,16 @@ class Hourglass(nn.Module):
                                    nn.Dropout(0.5),
                                    HourglassBlock(hidden_size,hidden_size),
                                    nn.Dropout(0.5),
+                                   HourglassBlock(hidden_size, hidden_size),
                                    )
 
-        self.max_p = nn.MaxPool1d(kernel_size=3,stride=1,padding=1)
-        self.mean_p = nn.AvgPool1d(kernel_size=3, stride=1, padding=1)
         self.att=Attention(hidden_size,hidden_size)
-
-
-        self.dense3 =nn.Sequential(nn.Linear(hidden_size, hidden_size),
-                                    nn.BatchNorm1d(hidden_size, momentum=BN_MOMENTUM, eps=BN_EPS),
-                                    ACT_FUNCTION())
-
         self.dense4 = nn.Linear(hidden_size, num_targets)
-
         self.dense5 = nn.Linear(hidden_size , num_extra_targets)
     def forward(self, x):
         x = self.bn_init(x)
         x = self.hour(x)
 
-
-        x = self.dense3(x)
         x = self.att(x)
 
         xx = self.dense4(x)
@@ -106,10 +96,3 @@ class Hourglass(nn.Module):
         return xx,yy
 
 
-
-if __name__=='__main__':
-    model=Complexer()
-    data=torch.zeros(size=[12,940])
-    res=model(data)
-
-    print(res.shape)

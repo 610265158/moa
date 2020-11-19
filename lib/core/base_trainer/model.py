@@ -87,31 +87,11 @@ class Complexer(nn.Module):
                                    )
 
 
-        self.max_p = nn.MaxPool1d(kernel_size=3,stride=1,padding=1)
-        self.mean_p = nn.AvgPool1d(kernel_size=3, stride=1, padding=1)
         self.att=Attention(hidden_size,hidden_size)
 
+        self.dense4 = nn.Linear(hidden_size, num_targets)
+        self.dense5 = nn.Linear(hidden_size, num_extra_targets)
 
-        self.dense3 = nn.Linear(hidden_size, hidden_size)
-
-        self.dense4 = nn.Linear(hidden_size*3, num_targets)
-
-        self.dense5 = nn.Linear(hidden_size * 3, num_extra_targets)
-
-        #####get the bias
-
-
-        import pandas as pd
-        import numpy as np
-        from torch.nn import Parameter
-        y_develop = pd.read_csv('../lish-moa/train_targets_scored.csv')
-        y_develop = y_develop.drop('sig_id', axis=1).values
-        y_develop = -np.log(y_develop.mean(axis=0)).astype(np.float32)
-
-        bias = torch.from_numpy(y_develop)
-
-
-        self.dense4.bias = Parameter(bias)
 
     def forward(self, x):
         x = self.bn_init(x)
@@ -119,25 +99,9 @@ class Complexer(nn.Module):
         x = self.dense2(x)
 
         x = self.att(x)
-        x = self.dense3(x)
-
-
-        x=x.unsqueeze(dim=1)
-        yy=self.max_p(x)
-        zz=self.mean_p(x)
-        x=torch.cat([yy,zz,x],dim=2)
-        x=x.squeeze(1)
-
 
         xx = self.dense4(x)
         yy = self.dense5(x)
         return xx,yy
 
 
-
-if __name__=='__main__':
-    model=Complexer()
-    data=torch.zeros(size=[12,940])
-    res=model(data)
-
-    print(res.shape)

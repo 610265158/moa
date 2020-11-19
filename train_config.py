@@ -14,12 +14,12 @@ config.TRAIN.prefetch_size = 15
 ############
 
 config.TRAIN.num_gpu = 1
-config.TRAIN.batch_size = 128
+config.TRAIN.batch_size = 256
 config.TRAIN.log_interval = 100                  ##10 iters for a log msg
 config.TRAIN.test_interval = 1
 config.TRAIN.epoch = 300
 
-config.TRAIN.init_lr=1.e-3
+config.TRAIN.init_lr=2.e-3
 
 config.TRAIN.weight_decay_factor = 1.e-5                                  ####l2
 config.TRAIN.vis=False                                                      #### if to check the training data
