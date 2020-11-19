@@ -26,7 +26,7 @@ from sklearn.feature_selection import VarianceThreshold
 from lib.core.base_trainer.model import Complexer
 from lib.core.base_trainer.densenet import Denseplexer
 from lib.core.base_trainer.table import Tablenet
-from lib.core.base_trainer.wide_and_depp import WideAndDeep
+from lib.core.base_trainer.hourglass import Hourglass
 
 def main():
 
@@ -67,13 +67,14 @@ def main():
     print(train_features.shape)
     losscolector=[]
     folds=[0,1,2,3,4,5,6]
-    seeds=[40,42,10086]
+    seeds=[42,10086]
 
     n_fold=len(folds)
 
     model_dicts=[{'name':'resnetlike','func':Complexer},
                  {'name':'densenetlike','func':Denseplexer},
                  {'name':'tablenet','func':Tablenet},
+                 {'name': 'hourglass', 'func': Hourglass},
                  ]
 
 
