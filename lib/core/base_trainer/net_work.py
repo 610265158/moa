@@ -286,10 +286,12 @@ class Train(object):
                     logger.info(log_message)
 
 
-        return summary_loss
+        return summary_loss,output
 
     best_loss = 10000.
     best_model = 'xxx'
+
+    best_predict=None
     not_improvement = 0
 
     for epoch in range(self.epochs):
@@ -322,7 +324,7 @@ class Train(object):
 
       if epoch%cfg.TRAIN.test_interval==0:
 
-          summary_loss = distributed_test_epoch(epoch)
+          summary_loss,oof_predict = distributed_test_epoch(epoch)
 
           val_epoch_log_message = '[fold %d], '\
                                   '[RESULT]: VAL. Epoch: %d,' \
@@ -354,6 +356,7 @@ class Train(object):
 
           best_loss=summary_loss.avg
           best_model=current_model_saved_name
+          best_predict=oof_predict
           not_improvement=0
 
       else:
@@ -373,7 +376,7 @@ class Train(object):
           self.optimizer.swap_swa_sgd()
 
 
-    return best_loss,best_model
+    return best_loss,best_model,torch.nn.functional.sigmoid(best_predict)
 
   def load_weight(self):
       if cfg.MODEL.pretrained_model is not None:
