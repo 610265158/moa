@@ -44,17 +44,17 @@ config.MODEL.image_only=False
 config.MODEL.pre_length=68         ##68:107, 91:130
 config.DATA = edict()
 
-config.DATA.filter_ctl_vehicle=True
+config.DATA.filter_ctl_vehicle=False
 
 
 ####mainly hyper params
-config.TRAIN.warmup_step=1500
+config.TRAIN.warmup_step=1500//2
 config.TRAIN.opt='Adamw'
 config.TRAIN.SWA=-1    ### -1 use no swa   from which epoch start SWA
 
 
 config.TRAIN.finetune_alldata=False
-config.TRAIN.pretrain_on_no_score=True
+config.TRAIN.pretrain_on_no_score=False
 
 
 config.MODEL.label_smooth=0.05

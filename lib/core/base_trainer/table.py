@@ -861,8 +861,8 @@ class Tableplexe(nn.Module):
     def __init__(self, num_features):
         super(Tableplexe, self).__init__()
 
-        self.n_d: int = 32
-        self.n_a: int = 32
+        self.n_d: int = 24
+        self.n_a: int = 24
         self.n_steps: int = 1
         self.gamma: float = 1.3
         self.cat_idxs: []=[]
@@ -877,9 +877,9 @@ class Tableplexe(nn.Module):
         self.clip_value: int = 1
         self.verbose: int = 1
 
-        self.mask_type: str = "sparsemax"
+        self.mask_type: str = "entmax"
         self.input_dim: int = num_features
-        self.output_dim: int = 512
+        self.output_dim: int = [206,402]
         self.device_name: str = "auto"
         self.virtual_batch_size=32
 
@@ -915,35 +915,9 @@ class Tablenet(nn.Module):
 
 
         self.dense1 =Tableplexe(num_features)
-
-
-
-
-        self.max_p = nn.MaxPool1d(kernel_size=3,stride=1,padding=1)
-        self.mean_p = nn.AvgPool1d(kernel_size=3, stride=1, padding=1)
-        self.att=Attention(hidden_size,hidden_size)
-
-
-        self.dense3 = nn.Linear(hidden_size, hidden_size)
-
-        self.dense4 = nn.Linear(hidden_size*3, num_targets)
-
-        self.dense5 = nn.Linear(hidden_size * 3, num_extra_targets)
     def forward(self, x):
 
-        x,loss = self.dense1(x)
-
-        x = self.att(x)
-        x = self.dense3(x)
+        (xx,yy),loss = self.dense1(x)
 
 
-        x=x.unsqueeze(dim=1)
-        yy=self.max_p(x)
-        zz=self.mean_p(x)
-        x=torch.cat([yy,zz,x],dim=2)
-        x=x.squeeze(1)
-
-
-        xx = self.dense4(x)
-        yy = self.dense5(x)
         return xx,yy

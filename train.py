@@ -48,7 +48,7 @@ def main():
     GENES = [col for col in train_features.columns if col.startswith('g-')]
     CELLS = [col for col in train_features.columns if col.startswith('c-')]
     ####
-    # RankGauss - transform to Gauss
+    ##RankGauss - transform to Gauss
     for col in (GENES + CELLS):
         transformer = QuantileTransformer(n_quantiles=100, random_state=0, output_distribution="normal")
         vec_len = len(train_features[col].values)
@@ -180,13 +180,13 @@ def main():
         for cur_seed in seeds:
 
             if model_dict['name'] == 'tablenet':
-                cfg.TRAIN.init_lr = 5.e-3
+                cfg.TRAIN.init_lr = 1.e-2
 
             oof = np.zeros((train_features.shape[0], 206))
-            for cur_seed in seeds:
-                oof_ = run_k_fold(model_dict, cur_seed)
 
-                oof += oof_ / len(seeds)
+            oof_ = run_k_fold(model_dict, cur_seed)
+
+            oof += oof_ / len(seeds)
 
             y_true = labels.drop('sig_id', axis=1).values
 
