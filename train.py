@@ -207,7 +207,7 @@ def main():
 
             oof_ = run_k_fold(model_dict, cur_seed)
 
-            oof += oof_ / len(seeds)
+            oof += oof_ 
 
             y_true = labels.drop('sig_id', axis=1).values
 
