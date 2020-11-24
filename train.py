@@ -27,7 +27,7 @@ from lib.core.base_trainer.model import Complexer
 from lib.core.base_trainer.densenet import Denseplexer
 from lib.core.base_trainer.table import Tablenet
 from lib.core.base_trainer.wide_and_depp import WideAndDeep
-
+from lib.core.base_trainer.mlp import MLP
 def main():
 
 
@@ -103,15 +103,7 @@ def main():
             val_target_ = labels.iloc[val_ind].copy()
             val_extra_Target_ = extra_labels.iloc[val_ind].copy()
 
-            if cfg.DATA.filter_ctl_vehicle:
 
-                oof_index = (features['fold'] == fold) & (features['cp_type'] != 'ctl_vehicle')
-
-                oof_index = features.loc[oof_index].index.to_list()
-                print('zzzzz', len(oof_index))
-
-            else:
-                oof_index = (features['fold'] == fold)
 
             train_ds = DataIter(train_features_, train_target_, train_extra_Target_, shuffle=True, training_flag=True)
             val_ds = DataIter(val_features_, val_target_, val_extra_Target_, shuffle=False, training_flag=False)
@@ -170,9 +162,38 @@ def main():
                 loss, best_model, oof_predict = trainer.custom_loop()
 
             losscolector.append([loss, best_model])
-            oof[oof_index] = oof_predict.cpu().numpy()
-        return oof
+            oof[val_ind]=predict(model,best_model,val_features_)
 
+        return oof
+    def predict(model,model_name,feature):
+        def preprocess(df):
+            """Returns preprocessed data frame"""
+            df = df.copy()
+            df.loc[:, 'cp_type'] = df.loc[:, 'cp_type'].map({'trt_cp': 0, 'ctl_vehicle': 1})
+            df.loc[:, 'cp_dose'] = df.loc[:, 'cp_dose'].map({'D1': 0, 'D2': 1})
+            df.loc[:, 'cp_time'] = df.loc[:, 'cp_time'].map({24: 0, 48: 1, 72: 2})
+            df = df.drop(['sig_id','fold'], axis=1)
+            return df
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.load_state_dict(torch.load(model_name, map_location=device))
+        model.to(device)
+        model.eval()
+
+
+        feature_processed=preprocess(feature.copy())
+
+        feature_processed=torch.from_numpy(feature_processed.values).to(device).float()
+        with torch.no_grad():
+            predict,__=model(feature_processed)
+
+            predict=torch.nn.functional.sigmoid(predict)
+
+            predict=predict.cpu().numpy()
+
+        predict[feature['cp_type']=='ctl_vehicle']=0
+
+        return predict
 
     for model_dict in model_dicts:
         # for cur_seed in seeds:
