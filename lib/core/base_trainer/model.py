@@ -67,7 +67,7 @@ class ResBlock(nn.Module):
 
 class Complexer(nn.Module):
 
-    def __init__(self, num_features=875, num_targets=206,num_extra_targets=402, hidden_size=1024):
+    def __init__(self, num_features=875, num_targets=206,num_extra_targets=402, hidden_size=512):
         super(Complexer, self).__init__()
 
         self.bn_init = nn.BatchNorm1d(num_features, momentum=0.01, eps=BN_EPS)
