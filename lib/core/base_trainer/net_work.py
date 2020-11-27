@@ -97,7 +97,7 @@ class Train(object):
 
 
 
-    self.train_criterion=BCEWithLogitsLoss(smooth_eps=0.0005).to(self.device)
+    self.train_criterion=BCEWithLogitsLoss(smooth_eps=0.001).to(self.device)
     self.criterion = nn.BCEWithLogitsLoss().to(self.device)
 
 
