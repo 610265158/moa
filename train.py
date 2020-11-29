@@ -3,6 +3,7 @@ from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import QuantileTransformer
 from torch import nn
+from tqdm import tqdm
 
 from lib.core.base_trainer.net_work import Train
 
@@ -44,27 +45,138 @@ def main():
 
     pub_test_features=test_features.copy()
 
+
+
+
+    variance_threshould=0.8
+
+    # 筛掉方差小于 variance_threshould 的特征
+    cols_numeric = [feat for feat in list(train_features.columns) if feat not in ['sig_id', 'cp_type', 'cp_time', 'cp_dose']]
+    mask = (train_features[cols_numeric].var() >= variance_threshould).values
+    tmp = train_features[cols_numeric].loc[:, mask]
+    train_features = pd.concat([train_features[['sig_id', 'cp_type', 'cp_time', 'cp_dose']], tmp], axis=1)
+    #cols_numeric = [feat for feat in list(data_all.columns) if feat not in ['sig_id', 'cp_type', 'cp_time', 'cp_dose']]
+    tmp = test_features[cols_numeric].loc[:, mask]
+    test_features = pd.concat([test_features[['sig_id', 'cp_type', 'cp_time', 'cp_dose']], tmp], axis=1)
+
+    tmp = pub_test_features[cols_numeric].loc[:, mask]
+    pub_test_features = pd.concat([pub_test_features[['sig_id', 'cp_type', 'cp_time', 'cp_dose']], tmp], axis=1)
+
+
     # ####
     # ####
+
     GENES = [col for col in train_features.columns if col.startswith('g-')]
     CELLS = [col for col in train_features.columns if col.startswith('c-')]
     ####
     ##RankGauss - transform to Gauss
-    for col in (GENES + CELLS):
-        transformer = QuantileTransformer(n_quantiles=100, random_state=0, output_distribution="normal")
-        vec_len = len(train_features[col].values)
-        vec_len_pub_test = len(pub_test_features[col].values)
-        vec_len_test=len(test_features[col].values)
 
-        data = train_features[col].values.reshape(vec_len, 1)
+    def rank_gauss(train_features, pub_features, test_features):
+        ##RankGauss - transform to Gauss
+        for col in (GENES + CELLS):
+            transformer = QuantileTransformer(n_quantiles=100, random_state=0, output_distribution="normal")
+            vec_len = len(train_features[col].values)
+            vec_len_pub_test = len(pub_test_features[col].values)
+            vec_len_test = len(test_features[col].values)
 
-        transformer.fit(data)
+            data = np.concatenate([train_features[col].values.reshape(vec_len, 1),
+                                   pub_features[col].values.reshape(vec_len_pub_test, 1),
+                                   ])
 
-        train_features[col] = \
-            transformer.transform(train_features[col].values.reshape(vec_len, 1)).reshape(1, vec_len)[0]
+            transformer.fit(data)
 
+            train_features[col] = \
+                transformer.transform(train_features[col].values.reshape(vec_len, 1)).reshape(1, vec_len)[0]
 
-    print(train_features.shape)
+            pub_features[col] = \
+                transformer.transform(pub_features[col].values.reshape(vec_len_pub_test, 1)).reshape(1,
+                                                                                                     vec_len_pub_test)[
+                    0]
+
+            test_features[col] = \
+                transformer.transform(test_features[col].values.reshape(vec_len_test, 1)).reshape(1, vec_len_test)[0]
+
+        return train_features, pub_features, test_features
+
+    def pca(train_features, pub_features, test_features):
+
+        # GENES
+        n_comp = 600  # <--Update
+
+        data = pd.concat([pd.DataFrame(train_features[GENES]), pd.DataFrame(pub_features[GENES])])
+
+        pca = PCA(n_components=n_comp, random_state=42)
+        pca.fit(data[GENES])
+
+        train2 = pca.transform(train_features[GENES])
+        pubtest2 = pca.transform(pub_features[GENES])
+        test2 = pca.transform(test_features[GENES])
+
+        train2 = pd.DataFrame(train2, columns=[f'pca_G-{i}' for i in range(n_comp)])
+        pubtest2 = pd.DataFrame(pubtest2, columns=[f'pca_G-{i}' for i in range(n_comp)])
+        test2 = pd.DataFrame(test2, columns=[f'pca_G-{i}' for i in range(n_comp)])
+
+        # drop_cols = [f'c-{i}' for i in range(n_comp,len(GENES))]
+        train_features = pd.concat((train_features, train2), axis=1)
+        pub_features = pd.concat((pub_features, pubtest2), axis=1)
+        test_features = pd.concat((test_features, test2), axis=1)
+
+        # CELLS
+        n_comp = 50  # <--Update
+
+        data = pd.concat([pd.DataFrame(train_features[CELLS]), pd.DataFrame(pub_features[CELLS])])
+
+        pca = PCA(n_components=n_comp, random_state=42)
+
+        pca.fit(data[CELLS])
+
+        train2 = pca.transform(train_features[CELLS])
+        pubtest2 = pca.transform(pub_features[CELLS])
+        test2 = pca.transform(test_features[CELLS])
+
+        train2 = pd.DataFrame(train2, columns=[f'pca_C-{i}' for i in range(n_comp)])
+        pubtest2 = pd.DataFrame(pubtest2, columns=[f'pca_C-{i}' for i in range(n_comp)])
+        test2 = pd.DataFrame(test2, columns=[f'pca_C-{i}' for i in range(n_comp)])
+
+        # drop_cols = [f'c-{i}' for i in range(n_comp,len(CELLS))]
+        train_features = pd.concat((train_features, train2), axis=1)
+        pub_features = pd.concat((pub_features, pubtest2), axis=1)
+        test_features = pd.concat((test_features, test2), axis=1)
+
+        return train_features, pub_features, test_features
+
+    def selection(train_features, pub_features, test_features):
+        var_thresh = VarianceThreshold(0.9)  # <-- Update
+        data = train_features.append(pub_features)
+        var_thresh.fit(data.iloc[:, 4:])
+
+        train_features_transformed = var_thresh.transform(train_features.iloc[:, 4:])
+        pubtest_features_transformed = var_thresh.transform(pub_features.iloc[:, 4:])
+        test_features_transformed = var_thresh.transform(test_features.iloc[:, 4:])
+
+        train_features = pd.DataFrame(train_features[['sig_id', 'cp_type', 'cp_time', 'cp_dose']].values.reshape(-1, 4), \
+                                      columns=['sig_id', 'cp_type', 'cp_time', 'cp_dose'])
+
+        train_features = pd.concat([train_features, pd.DataFrame(train_features_transformed)], axis=1)
+
+        test_features = pd.DataFrame(test_features[['sig_id', 'cp_type', 'cp_time', 'cp_dose']].values.reshape(-1, 4), \
+                                     columns=['sig_id', 'cp_type', 'cp_time', 'cp_dose'])
+
+        pub_features = pd.concat([pub_features, pd.DataFrame(pubtest_features_transformed)], axis=1)
+
+        test_features = pd.DataFrame(test_features[['sig_id', 'cp_type', 'cp_time', 'cp_dose']].values.reshape(-1, 4), \
+                                     columns=['sig_id', 'cp_type', 'cp_time', 'cp_dose'])
+
+        test_features = pd.concat([test_features, pd.DataFrame(test_features_transformed)], axis=1)
+
+        train_features.shape
+
+        return train_features, pub_features, test_features
+
+    train_features, pub_test_features, test_features = rank_gauss(train_features, pub_test_features, test_features)
+    train_features, pub_test_features, test_features = pca(train_features, pub_test_features, test_features)
+    train_features, pub_test_features, test_features = selection(train_features, pub_test_features, test_features)
+
     losscolector=[]
     folds=[0,1,2,3,4,5,6]
     seeds=[0,40,42,10086,1]
@@ -112,7 +224,7 @@ def main():
 
             ### build model
 
-            model = model_dict['func']()
+            model = model_dict['func'](936)
 
             model_name = str(model_dict['name'] + str(cur_seed))
 
