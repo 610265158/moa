@@ -28,7 +28,7 @@ from lib.core.base_trainer.densenet import Denseplexer
 from lib.core.base_trainer.table import Tablenet
 from lib.core.base_trainer.wide_and_depp import WideAndDeep
 from lib.core.base_trainer.mlp import MLP
-from lib.core.base_trainer.tablenet2 import Tablenet2
+from lib.core.base_trainer.group_linear import GroupModel
 def main():
 
 
@@ -74,6 +74,7 @@ def main():
     model_dicts=[{'name':'resnetlike','func':Complexer},
                  {'name':'densenetlike','func':Denseplexer},
                  {'name':'tablenet','func':Tablenet},
+                 {'name': 'mlp', 'func': MLP},
                  ]
 
     def run_k_fold(model_dict, seed):
@@ -157,6 +158,7 @@ def main():
 
                 ###build trainer
                 trainer = Train(model_name=model_name, model=model, train_ds=train_ds, val_ds=val_ds, fold=fold)
+                trainer.pretrain = False
 
                 trainer.reset(best_model)
 

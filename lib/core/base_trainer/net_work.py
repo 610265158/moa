@@ -117,18 +117,14 @@ class Train(object):
       state_dict = torch.load(model_name, map_location=self.device)
       self.model.load_state_dict(state_dict, strict=False)
 
-      param_optimizer = list(self.model.named_parameters())
-      no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
 
-      optimizer_grouped_parameters = [
-          {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
-           'weight_decay': cfg.TRAIN.weight_decay_factor},
-          {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
-      ]
+
+      ##train_last layer
+      params=[{'params': [param for name, param in self.model.named_parameters() if 'dense4' in name]}]
 
       if 'Adamw' in cfg.TRAIN.opt:
 
-          self.optimizer = torch.optim.AdamW(self.model.parameters(),
+          self.optimizer = torch.optim.AdamW(params,
                                              lr=self.init_lr, eps=1.e-5, weight_decay=cfg.TRAIN.weight_decay_factor)
       else:
           self.optimizer = torch.optim.SGD(self.model.parameters(),
@@ -158,7 +154,6 @@ class Train(object):
       self.train_criterion = BCEWithLogitsLoss(smooth_eps=0.001).to(self.device)
       self.criterion = nn.BCEWithLogitsLoss().to(self.device)
 
-      self.pretrain=True
 
   def custom_loop(self):
     """Custom training and testing loop.

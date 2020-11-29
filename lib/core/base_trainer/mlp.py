@@ -1,39 +1,81 @@
+import torch
 import torch.nn as nn
 
-import torch.nn.functional as F
-Dropout_Model=0.25
 
+# A memory-efficient implementation of Swish function
+class SwishImplementation(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, i):
+        result = i * torch.sigmoid(i)
+        ctx.save_for_backward(i)
+        return result
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        i = ctx.saved_variables[0]
+        sigmoid_i = torch.sigmoid(i)
+        return grad_output * (sigmoid_i * (1 + i * (1 - sigmoid_i)))
+
+class MemoryEfficientSwish(nn.Module):
+    def forward(self, x):
+        return SwishImplementation.apply(x)
+
+
+BN_MOMENTUM=0.02
+BN_EPS=1e-5
+ACT_FUNCTION=MemoryEfficientSwish
+
+
+class Attention(nn.Module):
+
+    def __init__(self, input_dim=512, output_dim=512):
+        super(Attention, self).__init__()
+
+        self.att=nn.Sequential(nn.Linear(input_dim, output_dim//4,bias=False),
+                               nn.BatchNorm1d(output_dim//4,momentum=BN_MOMENTUM,eps=BN_EPS),
+                               ACT_FUNCTION(),
+                               nn.Linear(output_dim//4, output_dim, bias=False),
+                               nn.BatchNorm1d(output_dim, momentum=BN_MOMENTUM,eps=BN_EPS),
+                               nn.Sigmoid())
+
+    def forward(self, x):
+        xx = self.att(x)
+
+        return x*xx
 
 class MLP(nn.Module):
-    def __init__(self, num_features, num_targets=206,extra_targets=402, hidden_size=1500):
+    def __init__(self, num_features=875, num_targets=206,extra_targets=402, hidden_size=256):
         super(MLP, self).__init__()
-        self.batch_norm1 = nn.BatchNorm1d(num_features)
-        self.dense1 = nn.utils.weight_norm(nn.Linear(num_features, hidden_size))
+        self.batch_norm1 = nn.BatchNorm1d(num_features, momentum=0.01, eps=BN_EPS)
 
-        self.batch_norm2 = nn.BatchNorm1d(hidden_size)
-        self.dropout2 = nn.Dropout(Dropout_Model)
-        self.dense2 = nn.utils.weight_norm(nn.Linear(hidden_size, hidden_size))
 
-        self.batch_norm3 = nn.BatchNorm1d(hidden_size)
-        self.dropout3 = nn.Dropout(Dropout_Model)
+
+
+        self.dense1 = nn.Sequential(nn.Linear(num_features, hidden_size,bias=False),
+                                    nn.BatchNorm1d(hidden_size,momentum=BN_MOMENTUM,eps=BN_EPS),
+                                    ACT_FUNCTION(),
+                                    nn.Dropout(0.5))
+
+        self.dense2 = nn.Sequential(nn.Linear(hidden_size, hidden_size,bias=False),
+                                    nn.BatchNorm1d(hidden_size,momentum=BN_MOMENTUM,eps=BN_EPS),
+                                    ACT_FUNCTION(),
+                                    nn.Dropout(0.5))
+
+
+        self.att=Attention(hidden_size,hidden_size)
         self.dense3 = nn.utils.weight_norm(nn.Linear(hidden_size, num_targets))
 
-        self.batch_norm4 = nn.BatchNorm1d(hidden_size)
-        self.dropout4 = nn.Dropout(Dropout_Model)
         self.dense4 = nn.utils.weight_norm(nn.Linear(hidden_size, extra_targets))
     def forward(self, x):
         x = self.batch_norm1(x)
-        x = F.leaky_relu(self.dense1(x))
+        x1 = self.dense1(x)
+        x2 = self.dense2(x1)
 
-        x = self.batch_norm2(x)
-        x = self.dropout2(x)
-        x = F.leaky_relu(self.dense2(x))
+        x2=x2+x1
 
-        xx = self.batch_norm3(x)
-        xx = self.dropout3(xx)
-        xx = self.dense3(xx)
 
-        yy = self.batch_norm4(x)
-        yy = self.dropout4(yy)
-        yy = self.dense4(yy)
+        x2=self.att(x2)
+        xx = self.dense3(x2)
+
+        yy = self.dense4(x2)
         return xx,yy
