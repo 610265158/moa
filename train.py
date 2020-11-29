@@ -179,7 +179,7 @@ def main():
 
     losscolector=[]
     folds=[0,1,2,3,4,5,6]
-    seeds=[0,40,42,10086,1]
+    seeds=[40,42,10086]
 
     n_fold=len(folds)
 
